@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Records - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+
+<main class="container wide">
+    <section class="card">
+        <div class="card-head">
+            <h2 id="records-heading" th:text="${isFarmer} ? 'My queries' : 'All queries'">Queries</h2>
+            <a class="btn" id="new-record-link" th:if="${isFarmer}" th:href="@{/records/new}">New query</a>
+        </div>
+
+        <p class="muted" id="no-records" th:if="${#lists.isEmpty(records)}">No records found.</p>
+
+        <table id="records-table" th:unless="${#lists.isEmpty(records)}">
+            <thead>
+            <tr>
+                <th>Ref</th><th>Crop</th><th>Village</th><th>Problem</th><th>Status</th><th>Submitted by</th><th>Date</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${records}">
+                <td><a th:href="@{/records/{id}(id=${r.id})}" th:text="${r.id}">1</a></td>
+                <td th:text="${r.crop}">Wheat</td>
+                <td th:text="${r.village}">Village</td>
+                <td th:text="${r.problemTitle}">Problem</td>
+                <td><span class="badge" th:text="${r.status.label}">Submitted</span></td>
+                <td th:text="${r.farmer.fullName}">Farmer</td>
+                <td th:text="${#temporals.format(r.createdAt, 'dd MMM yyyy')}">01 Jan 2026</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

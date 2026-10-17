@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New query - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+
+<main class="container">
+    <section class="card">
+        <h2>Raise a crop query</h2>
+        <p class="muted">Describe the problem so an expert can advise you.</p>
+
+        <form th:action="@{/records}" th:object="${form}" method="post">
+            <label for="village">Village</label>
+            <input type="text" th:field="*{village}">
+            <span class="field-error" th:if="${#fields.hasErrors('village')}" th:errors="*{village}">error</span>
+
+            <label for="crop">Crop</label>
+            <input type="text" th:field="*{crop}" list="crop-list">
+            <datalist id="crop-list">
+                <option value="Wheat"></option>
+                <option value="Rice"></option>
+                <option value="Tomato"></option>
+                <option value="Cotton"></option>
+                <option value="Soybean"></option>
+            </datalist>
+            <span class="field-error" th:if="${#fields.hasErrors('crop')}" th:errors="*{crop}">error</span>
+
+            <label for="problemTitle">Problem title</label>
+            <input type="text" th:field="*{problemTitle}">
+            <span class="field-error" th:if="${#fields.hasErrors('problemTitle')}" th:errors="*{problemTitle}">error</span>
+
+            <label for="description">Description</label>
+            <textarea th:field="*{description}" rows="5"></textarea>
+            <span class="field-error" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">error</span>
+
+            <div class="actions">
+                <button type="submit" id="submit-record">Submit query</button>
+                <a th:href="@{/records}">Cancel</a>
+            </div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Record details - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+
+<main class="container">
+    <div class="msg info" id="flash-message" th:if="${message}" th:text="${message}">Saved.</div>
+
+    <section class="card">
+        <div class="card-head">
+            <h2>Query <span id="record-id" th:text="${record.id}">1</span></h2>
+            <span class="badge" id="record-status" th:text="${record.status.label}">Submitted</span>
+        </div>
+
+        <dl class="details">
+            <dt>Problem</dt><dd id="record-title" th:text="${record.problemTitle}">Title</dd>
+            <dt>Crop</dt><dd id="record-crop" th:text="${record.crop}">Crop</dd>
+            <dt>Village</dt><dd id="record-village" th:text="${record.village}">Village</dd>
+            <dt>Description</dt><dd id="record-description" th:text="${record.description} ?: '-'">Description</dd>
+            <dt>Submitted by</dt><dd th:text="${record.farmer.fullName}">Farmer</dd>
+            <dt>Submitted on</dt><dd th:text="${#temporals.format(record.createdAt, 'dd MMM yyyy HH:mm')}">01 Jan 2026</dd>
+        </dl>
+    </section>
+
+    <section class="card">
+        <h2>Expert advice</h2>
+        <p id="record-advice" th:if="${record.advice != null}" th:text="${record.advice}">Advice</p>
+        <p class="muted" id="no-advice" th:if="${record.advice == null}">No advice yet. An expert will review this query.</p>
+    </section>
+
+    <p><a th:href="@{/records}">Back to records</a></p>
+</main>
+</body>
+</html>
