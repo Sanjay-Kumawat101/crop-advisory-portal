@@ -2,6 +2,7 @@ package com.cropadvisory.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,6 +24,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login", "/css/**", "/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers("/dashboard/**").hasRole("ADMIN")
+                .requestMatchers("/records/new").hasRole("FARMER")
+                .requestMatchers(HttpMethod.POST, "/records").hasRole("FARMER")
                 .anyRequest().authenticated())
             .formLogin(form -> form
                 .loginPage("/login")

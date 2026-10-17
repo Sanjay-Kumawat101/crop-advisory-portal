@@ -63,3 +63,37 @@ button:hover { background: var(--green-dark); }
 .msg.info { background: #e1efe4; color: var(--green-dark); }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--line); }
+
+/* Records pages */
+.topbar h1 a { color: #fff; text-decoration: none; }
+.topbar nav { flex: 1; margin-left: 2rem; }
+.topbar nav a { color: #fff; text-decoration: none; margin-right: 1.2rem; opacity: 0.9; }
+.topbar nav a:hover { opacity: 1; text-decoration: underline; }
+.topbar .user { margin-right: 0.8rem; font-size: 0.9rem; }
+.container.wide { max-width: 1000px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.card-head h2 { margin: 0; }
+a.btn { display: inline-block; text-decoration: none; }
+textarea {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+textarea:focus { outline: 3px solid #9cc5a6; outline-offset: 1px; }
+.field-error { display: block; color: var(--error); font-size: 0.85rem; margin-top: 0.25rem; }
+.actions { display: flex; align-items: center; gap: 1rem; margin-top: 1.2rem; }
+.badge {
+  display: inline-block;
+  background: #e1efe4;
+  color: var(--green-dark);
+  border-radius: 999px;
+  padding: 0.1rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.details { display: grid; grid-template-columns: 9rem 1fr; gap: 0.5rem 1rem; margin: 1rem 0 0; }
+.details dt { font-weight: 600; color: var(--muted); }
+.details dd { margin: 0; }
