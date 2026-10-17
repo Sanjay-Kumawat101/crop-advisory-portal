@@ -1,5 +1,6 @@
 package com.cropadvisory.dto;
 
+import com.cropadvisory.model.AdvisoryRecord;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -29,4 +30,13 @@ public class RecordForm {
     public void setProblemTitle(String problemTitle) { this.problemTitle = problemTitle; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public static RecordForm from(AdvisoryRecord record) {
+        RecordForm form = new RecordForm();
+        form.setVillage(record.getVillage());
+        form.setCrop(record.getCrop());
+        form.setProblemTitle(record.getProblemTitle());
+        form.setDescription(record.getDescription());
+        return form;
+    }
 }

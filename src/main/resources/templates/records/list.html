@@ -8,31 +8,43 @@
 </head>
 <body>
 <header th:replace="~{fragments :: topbar}"></header>
+<main class="container">
+    <div class="msg info" id="flash-message" th:if="${message}" th:text="${message}"></div>
+    <div class="msg error" th:if="${error}" th:text="${error}"></div>
 
-<main class="container wide">
     <section class="card">
-        <div class="card-head">
-            <h2 id="records-heading" th:text="${isFarmer} ? 'My queries' : 'All queries'">Queries</h2>
-            <a class="btn" id="new-record-link" th:if="${isFarmer}" th:href="@{/records/new}">New query</a>
+        <div class="row">
+            <h2>Advisory records</h2>
+            <a class="btn" id="new-record" th:if="${role == 'FARMER'}" th:href="@{/records/new}">+ New query</a>
         </div>
 
-        <p class="muted" id="no-records" th:if="${#lists.isEmpty(records)}">No records found.</p>
+        <form class="filters" th:action="@{/records}" method="get">
+            <input type="text" id="search-q" name="q" th:value="${q}" placeholder="Search crop, village or title">
+            <select id="search-status" name="status">
+                <option value="">All statuses</option>
+                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"
+                        th:selected="${s == selectedStatus}"></option>
+            </select>
+            <button type="submit" id="search-button">Search</button>
+        </form>
 
-        <table id="records-table" th:unless="${#lists.isEmpty(records)}">
+        <table id="records-table">
             <thead>
-            <tr>
-                <th>Ref</th><th>Crop</th><th>Village</th><th>Problem</th><th>Status</th><th>Submitted by</th><th>Date</th>
-            </tr>
+            <tr><th>#</th><th>Crop</th><th>Village</th><th>Problem</th><th>Farmer</th><th>Status</th><th>Updated</th></tr>
             </thead>
             <tbody>
             <tr th:each="r : ${records}">
-                <td><a th:href="@{/records/{id}(id=${r.id})}" th:text="${r.id}">1</a></td>
+                <td th:text="${r.id}">1</td>
                 <td th:text="${r.crop}">Wheat</td>
-                <td th:text="${r.village}">Village</td>
-                <td th:text="${r.problemTitle}">Problem</td>
-                <td><span class="badge" th:text="${r.status.label}">Submitted</span></td>
+                <td th:text="${r.village}">Rampur</td>
+                <td><a th:href="@{/records/{id}(id=${r.id})}" th:text="${r.problemTitle}">Title</a></td>
                 <td th:text="${r.farmer.fullName}">Farmer</td>
-                <td th:text="${#temporals.format(r.createdAt, 'dd MMM yyyy')}">01 Jan 2026</td>
+                <td><span class="badge" th:classappend="${'st-' + r.status.name().toLowerCase()}"
+                          th:text="${r.status.label}">Submitted</span></td>
+                <td th:text="${#temporals.format(r.updatedAt, 'dd MMM yyyy HH:mm')}">date</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(records)}">
+                <td colspan="7" class="muted" id="no-records">No records found.</td>
             </tr>
             </tbody>
         </table>
