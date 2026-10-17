@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+<body>
+<header class="topbar">
+    <h1>Crop Advisory Portal</h1>
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" id="logout-button">Sign out</button>
+    </form>
+</header>
+<main class="container">
+    <h2>Summary dashboard</h2>
+    <div class="stats">
+        <div class="stat"><strong id="total-count" th:text="${summary.total()}">0</strong>Total queries</div>
+        <div class="stat"><strong id="open-count" th:text="${summary.open()}">0</strong>Open queries</div>
+        <div class="stat"><strong id="closed-count" th:text="${summary.closed()}">0</strong>Closed queries</div>
+    </div>
+
+    <section class="card">
+        <h3>Status-wise count</h3>
+        <table id="status-table">
+            <tr th:each="b : ${summary.byStatus()}" th:attr="data-label=${b.label()}">
+                <td th:text="${b.label()}">Submitted</td>
+                <td class="bar-count" th:text="${b.count()}">0</td>
+                <td><div class="bar"><span th:style="'width:' + ${b.percent()} + '%'"></span></div></td>
+            </tr>
+        </table>
+    </section>
+
+    <section class="card">
+        <h3>Crop-wise count</h3>
+        <table id="crop-table">
+            <tr th:each="b : ${summary.byCrop()}" th:attr="data-label=${b.label()}">
+                <td th:text="${b.label()}">Wheat</td>
+                <td class="bar-count" th:text="${b.count()}">0</td>
+                <td><div class="bar"><span th:style="'width:' + ${b.percent()} + '%'"></span></div></td>
+            </tr>
+        </table>
+    </section>
+    <a th:href="@{/home}" id="back-home">Back to home</a>
+</main>
+</body>
+</html>
