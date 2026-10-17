@@ -13,3 +13,11 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, Lo
             + "order by h.changedAt")
     List<StatusHistory> findByRecordIdWithChangedBy(@Param("recordId") Long recordId);
 }
+    @Query("""
+        select h from StatusHistory h
+        join fetch h.changedBy
+        where h.record.id = :recordId
+        order by h.changedAt desc
+        """)
+    List<StatusHistory> findByRecordId(@Param("recordId") Long recordId);
+}
