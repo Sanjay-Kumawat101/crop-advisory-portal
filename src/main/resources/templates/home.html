@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Home - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header class="topbar">
+    <h1>Crop Advisory Portal</h1>
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" id="logout-button">Sign out</button>
+    </form>
+</header>
+
+<main class="container">
+    <section class="card">
+        <h2 id="welcome">Welcome, <span th:text="${username}">user</span></h2>
+        <p>You are signed in as <strong id="user-role" th:text="${role}">ROLE</strong>.</p>
+        <p class="muted">Environment: <span id="env-name" th:text="${env}">dev</span></p>
+    </section>
+
+    <section class="card">
+        <h2>Project status</h2>
+        <table>
+            <tr><th>Module</th><th>Status</th></tr>
+            <tr><td>Login with roles</td><td>Ready</td></tr>
+            <tr><td>Create, view, update and search records</td><td>Coming soon</td></tr>
+            <tr><td>Role-based status workflow</td><td>Coming soon</td></tr>
+            <tr><td>Summary dashboard</td><td>Coming soon</td></tr>
+        </table>
+    </section>
+</main>
+</body>
+</html>

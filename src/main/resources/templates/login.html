@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign in - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="container">
+    <div class="card login-card">
+        <h2>Crop Advisory Portal</h2>
+        <p class="muted">Sign in to raise or answer crop queries.</p>
+
+        <div class="msg error" id="login-error" th:if="${param.error}">Wrong username or password. Try again.</div>
+        <div class="msg info" id="logout-msg" th:if="${param.logout}">You have been signed out.</div>
+
+        <form th:action="@{/login}" method="post">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+            <button type="submit" id="login-button">Sign in</button>
+        </form>
+    </div>
+</main>
+</body>
+</html>
