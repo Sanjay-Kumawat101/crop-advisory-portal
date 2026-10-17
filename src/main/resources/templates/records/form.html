@@ -35,7 +35,7 @@
             <span class="field-error" th:if="${#fields.hasErrors('problemTitle')}" th:errors="*{problemTitle}">error</span>
 
             <label for="description">Description</label>
-            <textarea th:field="*{description}" rows="5"></textarea>
+            <textarea th:field="*{description}" rows="5" maxlength="1000"></textarea>
             <span class="field-error" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">error</span>
 
             <div class="actions">
