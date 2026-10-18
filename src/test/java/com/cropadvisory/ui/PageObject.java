@@ -34,12 +34,17 @@ abstract class PageObject {
     }
 
     protected void replaceText(By locator, String value) {
+        String text = normalizedText(value);
         WebElement element = visible(locator);
         ((JavascriptExecutor) driver).executeScript(
                 "arguments[0].value = arguments[1];"
                         + "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));"
                         + "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
-                element, value);
-        wait.until(currentDriver -> value.equals(currentDriver.findElement(locator).getDomProperty("value")));
+                element, text);
+        wait.until(currentDriver -> text.equals(currentDriver.findElement(locator).getDomProperty("value")));
+    }
+
+    protected static String normalizedText(String value) {
+        return value == null ? "" : value;
     }
 }
