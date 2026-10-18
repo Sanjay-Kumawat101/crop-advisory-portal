@@ -5,14 +5,6 @@ pipeline {
         skipDefaultCheckout(true)
     }
 
-    parameters {
-        choice(
-            name: 'ENVIRONMENT',
-            choices: ['dev', 'test', 'prod'],
-            description: 'Tomcat deployment environment'
-        )
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -57,15 +49,35 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Docker Build') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'tomcat-manager',
-                    usernameVariable: 'TOMCAT_USERNAME',
-                    passwordVariable: 'TOMCAT_PASSWORD'
-                )]) {
-                    bat 'call scripts\\deploy-tomcat.bat "%ENVIRONMENT%"'
+                script {
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0, 7)}"
                 }
+                bat 'docker build --tag localhost:5000/crop-advisory:%IMAGE_TAG% --tag localhost:5000/crop-advisory:latest .'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                bat 'docker push localhost:5000/crop-advisory:%IMAGE_TAG%'
+                bat 'docker push localhost:5000/crop-advisory:latest'
+            }
+        }
+
+        stage('Docker Deploy') {
+            steps {
+                bat 'docker rm -f crop-advisory || exit /b 0'
+                bat 'docker run -d --name crop-advisory -p 8082:8080 -v crop-data:/data --restart unless-stopped localhost:5000/crop-advisory:%IMAGE_TAG%'
+                bat '''@echo off
+for /L %%i in (1,1,30) do (
+    curl.exe --fail --silent --show-error --output NUL http://localhost:8082/actuator/health
+    if not errorlevel 1 exit /b 0
+    timeout /t 2 /nobreak >NUL
+)
+echo Docker deployment health check failed.
+exit /b 1
+'''
             }
         }
     }
