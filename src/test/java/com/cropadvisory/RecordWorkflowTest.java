@@ -1,6 +1,6 @@
 package com.cropadvisory;
 
-import com.cropadvisory.controller.RecordForm;
+import com.cropadvisory.dto.RecordForm;
 import com.cropadvisory.model.AdvisoryRecord;
 import com.cropadvisory.model.Status;
 import com.cropadvisory.model.User;

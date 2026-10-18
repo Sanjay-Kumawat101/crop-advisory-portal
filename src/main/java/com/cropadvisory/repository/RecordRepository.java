@@ -24,26 +24,8 @@ public interface RecordRepository extends JpaRepository<AdvisoryRecord, Long> {
         """)
     List<AdvisoryRecord> search(@Param("farmerId") Long farmerId,
                                 @Param("status") Status status,
-                                @Param("q") String q);
+                                @Param("q") String query);
 
-    @Query("select r from AdvisoryRecord r join fetch r.farmer f left join fetch r.expert "
-            + "where f.username = :username order by r.createdAt desc")
-    List<AdvisoryRecord> findByFarmerUsername(@Param("username") String username);
-
-    @Query("select r from AdvisoryRecord r join fetch r.farmer left join fetch r.expert where r.id = :id")
-    Optional<AdvisoryRecord> findByIdWithUsers(@Param("id") Long id);
-
-    @Query("select r from AdvisoryRecord r join fetch r.farmer f left join fetch r.expert "
-            + "where (:farmerId is null or f.id = :farmerId) "
-            + "and (:status is null or r.status = :status) "
-            + "and (:term is null or lower(r.crop) like lower(concat('%', :term, '%')) "
-            + "or lower(r.village) like lower(concat('%', :term, '%')) "
-            + "or lower(r.problemTitle) like lower(concat('%', :term, '%'))) "
-            + "order by r.createdAt desc")
-    List<AdvisoryRecord> searchRecords(@Param("farmerId") Long farmerId,
-                                       @Param("term") String term,
-                                       @Param("status") Status status);
-}
     @Query("""
         select r from AdvisoryRecord r
         join fetch r.farmer
@@ -51,4 +33,12 @@ public interface RecordRepository extends JpaRepository<AdvisoryRecord, Long> {
         where r.id = :id
         """)
     Optional<AdvisoryRecord> findDetailById(@Param("id") Long id);
+
+    @Query("select r from AdvisoryRecord r join fetch r.farmer f left join fetch r.expert "
+            + "where f.username = :username order by r.createdAt desc")
+    List<AdvisoryRecord> findByFarmerUsername(@Param("username") String username);
+
+    @Query("select r from AdvisoryRecord r join fetch r.farmer left join fetch r.expert "
+            + "where r.id = :id")
+    Optional<AdvisoryRecord> findByIdWithUsers(@Param("id") Long id);
 }
