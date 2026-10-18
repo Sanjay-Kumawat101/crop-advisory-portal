@@ -27,6 +27,22 @@ Java 17, Spring Boot 3.5 (WAR), Thymeleaf, Spring Security, Spring Data JPA, H2,
 5. Open http://localhost:8083/login
 6. Health check: http://localhost:8083/actuator/health
 
+## Selenium UI tests
+
+Install Google Chrome before running the browser tests. In one terminal, start the app with `mvn spring-boot:run`. In another PowerShell terminal, set environment variables to the local UI test account values (do not put credentials in source control), then run the Selenium/JUnit journeys:
+
+```powershell
+$env:UI_FARMER_USERNAME = "<farmer username>"
+$env:UI_FARMER_PASSWORD = "<farmer password>"
+$env:UI_EXPERT_USERNAME = "<expert username>"
+$env:UI_EXPERT_PASSWORD = "<expert password>"
+$env:UI_ADMIN_USERNAME = "<admin username>"
+$env:UI_ADMIN_PASSWORD = "<admin password>"
+mvn verify -Pui-tests "-Dbase.url=http://localhost:8083"
+```
+
+Selenium is included with test scope, and the `ui-tests` profile runs `*IT.java` tests through Maven Failsafe. The default `mvn clean package` build does not launch a browser. Chrome runs headlessly, and Selenium Manager resolves the matching WebDriver. If a UI test fails, its browser screenshot is saved under `target/screenshots`; Failsafe reports are written to `target/failsafe-reports`.
+
 ## Jenkins CI (Windows)
 The Freestyle job `crop-advisory-ci` builds the `develop` branch from GitHub. Configure Jenkins to poll SCM with `H/5 * * * *`; polling is used because a Jenkins instance running locally is not reachable by GitHub webhooks.
 
