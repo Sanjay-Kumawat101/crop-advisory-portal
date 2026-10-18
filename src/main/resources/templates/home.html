@@ -7,12 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-<header class="topbar">
-    <h1>Crop Advisory Portal</h1>
-    <form th:action="@{/logout}" method="post">
-        <button type="submit" id="logout-button">Sign out</button>
-    </form>
-</header>
+<header th:replace="~{fragments :: topbar}"></header>
 
 <main class="container">
     <section class="card">
@@ -22,12 +17,17 @@
     </section>
 
     <section class="card">
+        <h2>Quick links</h2>
+        <a class="btn" id="dashboard-link" th:if="${role == 'ADMIN'}" th:href="@{/dashboard}">Open summary dashboard</a>
+        <a class="btn" id="records-link" th:href="@{/records}">Open advisory records</a>
+    </section>
+
+    <section class="card">
         <h2>Project status</h2>
         <table>
-            <tr><th>Module</th><th>Status</th></tr>
-            <tr><td>Login with roles</td><td>Ready</td></tr>
-            <tr><td>Create, view, update and search records</td><td>Coming soon</td></tr>
-            <tr><td>Role-based status workflow</td><td>Coming soon</td></tr>
+            <tr><td>Summary dashboard</td><td>Ready</td></tr>
+            <tr><td>Create, view, update and search records</td><td>Ready</td></tr>
+            <tr><td>Role-based status workflow</td><td>Ready</td></tr>
             <tr><td>Summary dashboard</td><td>Coming soon</td></tr>
         </table>
     </section>

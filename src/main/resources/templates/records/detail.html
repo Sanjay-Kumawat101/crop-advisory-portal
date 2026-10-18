@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Record - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="container">
+    <div class="msg info" id="flash-message" th:if="${message}" th:text="${message}"></div>
+    <div class="msg error" id="flash-error" th:if="${error}" th:text="${error}"></div>
+
+    <section class="card">
+        <div class="row">
+            <h2 id="record-title" th:text="${record.problemTitle}">Title</h2>
+            <span class="badge" id="record-status" th:classappend="${'st-' + record.status.name().toLowerCase()}"
+                  th:text="${record.status.label}">Submitted</span>
+        </div>
+        <dl>
+            <dt>Crop</dt><dd id="record-crop" th:text="${record.crop}">Wheat</dd>
+            <dt>Village</dt><dd th:text="${record.village}">Rampur</dd>
+            <dt>Raised by</dt><dd th:text="${record.farmer.fullName}">Farmer</dd>
+            <dt>Description</dt><dd th:text="${record.description}">Text</dd>
+            <dt>Expert</dt><dd th:text="${record.expert != null ? record.expert.fullName : 'Not assigned yet'}">Expert</dd>
+        </dl>
+        <div th:if="${record.advice != null}">
+            <h3>Expert advice</h3>
+            <p id="record-advice" th:text="${record.advice}">Advice</p>
+        </div>
+        <a class="btn" id="edit-record" th:if="${canEdit}" th:href="@{/records/{id}/edit(id=${record.id})}">Edit</a>
+        <a th:href="@{/records}" id="back-link">Back to list</a>
+    </section>
+
+    <section class="card" th:if="${!#lists.isEmpty(allowed)}">
+        <h3>Next step</h3>
+        <form th:each="next : ${allowed}" th:action="@{/records/{id}/status(id=${record.id})}" method="post">
+            <input type="hidden" name="target" th:value="${next}">
+            <div th:if="${next.name() == 'ADVISED'}">
+                <label for="advice">Advice for the farmer</label>
+                <textarea id="advice" name="advice" rows="4" required></textarea>
+            </div>
+            <button type="submit" th:id="${'btn-' + next.name().toLowerCase()}"
+                    th:text="${'Mark as ' + next.label}">Move</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h3>Status history</h3>
+        <table id="history-table">
+            <tr><th>When</th><th>From</th><th>To</th><th>By</th></tr>
+            <tr th:each="h : ${history}">
+                <td th:text="${#temporals.format(h.changedAt, 'dd MMM yyyy HH:mm')}">date</td>
+                <td th:text="${h.oldStatus != null ? h.oldStatus.label : '-'}">-</td>
+                <td th:text="${h.newStatus.label}">Submitted</td>
+                <td th:text="${h.changedBy.fullName}">User</td>
+            </tr>
+        </table>
+    </section>
+</main>
+</body>
+</html>

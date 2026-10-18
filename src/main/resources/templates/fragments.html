@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<header class="topbar" th:fragment="topbar">
+    <h1>Crop Advisory Portal</h1>
+    <nav class="nav">
+        <a th:href="@{/home}" id="nav-home">Home</a>
+        <a th:href="@{/records}" id="nav-records">Records</a>
+        <span class="who" th:text="${username} + ' (' + ${role} + ')'">user</span>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit" id="logout-button">Sign out</button>
+        </form>
+    </nav>
+</header>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Query form - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="container">
+    <section class="card">
+        <h2 id="form-title" th:text="${title}">New crop query</h2>
+        <form th:action="@{${formAction}}" th:object="${form}" method="post">
+            <label for="crop">Crop</label>
+            <input type="text" id="crop" th:field="*{crop}">
+            <div class="field-error" th:if="${#fields.hasErrors('crop')}" th:errors="*{crop}"></div>
+
+            <label for="village">Village</label>
+            <input type="text" id="village" th:field="*{village}">
+            <div class="field-error" th:if="${#fields.hasErrors('village')}" th:errors="*{village}"></div>
+
+            <label for="problemTitle">Problem title</label>
+            <input type="text" id="problemTitle" th:field="*{problemTitle}">
+            <div class="field-error" th:if="${#fields.hasErrors('problemTitle')}" th:errors="*{problemTitle}"></div>
+
+            <label for="description">Description</label>
+            <textarea id="description" rows="5" th:field="*{description}"></textarea>
+            <div class="field-error" th:if="${#fields.hasErrors('description')}" th:errors="*{description}"></div>
+
+            <p>
+                <button type="submit" id="save-record">Save</button>
+                <a th:href="@{/records}" id="cancel-link">Cancel</a>
+            </p>
+        </form>
+    </section>
+</main>
+</body>
+</html>

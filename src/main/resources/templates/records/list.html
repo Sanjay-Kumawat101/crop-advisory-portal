@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Records - Crop Advisory Portal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+<main class="container">
+    <div class="msg info" id="flash-message" th:if="${message}" th:text="${message}"></div>
+    <div class="msg error" th:if="${error}" th:text="${error}"></div>
+
+    <section class="card">
+        <div class="row">
+            <h2>Advisory records</h2>
+            <a class="btn" id="new-record" th:if="${role == 'FARMER'}" th:href="@{/records/new}">+ New query</a>
+        </div>
+
+        <form class="filters" th:action="@{/records}" method="get">
+            <input type="text" id="search-q" name="q" th:value="${q}" placeholder="Search crop, village or title">
+            <select id="search-status" name="status">
+                <option value="">All statuses</option>
+                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"
+                        th:selected="${s == selectedStatus}"></option>
+            </select>
+            <button type="submit" id="search-button">Search</button>
+        </form>
+
+        <table id="records-table">
+            <thead>
+            <tr><th>#</th><th>Crop</th><th>Village</th><th>Problem</th><th>Farmer</th><th>Status</th><th>Updated</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${records}">
+                <td th:text="${r.id}">1</td>
+                <td th:text="${r.crop}">Wheat</td>
+                <td th:text="${r.village}">Rampur</td>
+                <td><a th:href="@{/records/{id}(id=${r.id})}" th:text="${r.problemTitle}">Title</a></td>
+                <td th:text="${r.farmer.fullName}">Farmer</td>
+                <td><span class="badge" th:classappend="${'st-' + r.status.name().toLowerCase()}"
+                          th:text="${r.status.label}">Submitted</span></td>
+                <td th:text="${#temporals.format(r.updatedAt, 'dd MMM yyyy HH:mm')}">date</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(records)}">
+                <td colspan="7" class="muted" id="no-records">No records found.</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

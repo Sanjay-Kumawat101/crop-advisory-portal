@@ -1,0 +1,5 @@
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 1rem; text-align: center; }
+.stat strong { display: block; font-size: 2rem; color: var(--green); }
+.bar { background: #e4ebe5; border-radius: 4px; height: 12px; min-width: 120px; }
+.bar span { display: block; height: 100%; background: var(--green); border-radius: 4px; }
