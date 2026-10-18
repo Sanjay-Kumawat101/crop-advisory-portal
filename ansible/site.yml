@@ -5,13 +5,12 @@
   gather_facts: true
 
   vars:
-    app_release_dir: "/opt/{{ app_name }}/releases/{{ app_version }}"
-    app_war_path: "{{ app_release_dir }}/app.war"
+    app_release_dir: "{{ app_releases_dir }}/{{ app_version }}"
 
   pre_tasks:
     - name: Check that the built WAR is available on the control node
       ansible.builtin.stat:
-        path: "{{ playbook_dir }}/../target/crop-advisory.war"
+        path: "{{ war_path }}"
       delegate_to: localhost
       become: false
       register: built_war
@@ -22,7 +21,7 @@
         that:
           - built_war.stat.exists
           - built_war.stat.isreg
-        fail_msg: "Build target/crop-advisory.war on the Ansible control node before deployment."
+        fail_msg: "Set war_path to an existing WAR on the Ansible control node."
       delegate_to: localhost
       become: false
       run_once: true
@@ -33,6 +32,7 @@
           - app_version is match('^[A-Za-z0-9][A-Za-z0-9._+-]*$')
           - app_port | int >= 1
           - app_port | int <= 65535
+          - app_release_limit | int >= 1
         fail_msg: "Set a safe app_version and a valid app_port in group_vars/all.yml."
 
   tasks:
@@ -70,15 +70,7 @@
 
     - name: Create application releases directory
       ansible.builtin.file:
-        path: "/opt/{{ app_name }}/releases"
-        state: directory
-        owner: cropapp
-        group: cropapp
-        mode: "0755"
-
-    - name: Create versioned release directory
-      ansible.builtin.file:
-        path: "{{ app_release_dir }}"
+        path: "{{ app_releases_dir }}"
         state: directory
         owner: cropapp
         group: cropapp
@@ -100,23 +92,6 @@
         group: cropapp
         mode: "0750"
 
-    - name: Copy application WAR into its versioned release
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../target/crop-advisory.war"
-        dest: "{{ app_war_path }}"
-        owner: cropapp
-        group: cropapp
-        mode: "0644"
-      notify: Restart crop-advisory
-
-    - name: Point current symlink to the deployed release
-      ansible.builtin.file:
-        src: "{{ app_release_dir }}"
-        dest: "/opt/{{ app_name }}/current"
-        state: link
-        force: true
-      notify: Restart crop-advisory
-
     - name: Template application environment
       ansible.builtin.template:
         src: templates/crop-advisory.env.j2
@@ -124,7 +99,7 @@
         owner: root
         group: cropapp
         mode: "0640"
-      notify: Restart crop-advisory
+      register: app_environment_config
 
     - name: Template systemd service unit
       ansible.builtin.template:
@@ -133,15 +108,11 @@
         owner: root
         group: root
         mode: "0644"
-      notify: Restart crop-advisory
+      register: app_service_config
 
-    - name: Enable and start Crop Advisory service
-      ansible.builtin.systemd:
-        name: crop-advisory.service
-        enabled: true
-        state: started
-        daemon_reload: true
-      when: not ansible_check_mode
+    - name: Record whether service configuration changed
+      ansible.builtin.set_fact:
+        service_config_changed: "{{ app_environment_config.changed or app_service_config.changed }}"
 
     - name: Check whether UFW is installed
       ansible.builtin.stat:
@@ -171,10 +142,6 @@
         - ufw_binary.stat.exists
         - "'Status: active' in ufw_status.stdout"
 
-  handlers:
-    - name: Restart crop-advisory
-      ansible.builtin.systemd:
-        name: crop-advisory.service
-        state: restarted
-        daemon_reload: true
-      when: not ansible_check_mode
+    - name: Deploy application release and verify health
+      ansible.builtin.include_role:
+        name: deploy

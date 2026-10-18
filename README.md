@@ -107,6 +107,40 @@ The local disposable WSL target uses key-only SSH and passwordless sudo for the 
 
 The playbook installs Java 17 and curl, installs the WAR under `/opt/crop-advisory/releases/<version>/`, and starts `crop-advisory.service` on port 8084. It persists H2 data in `/var/lib/crop-advisory/data`. The UFW rule is added only when UFW is installed and active. Once deployed, verify on the target with `systemctl status crop-advisory` and `curl http://localhost:8084/actuator/health`. See [docs/CONFIG_SPEC.md](docs/CONFIG_SPEC.md) for the managed configuration inventory.
 
+### Ansible release deployment, health rollback, and manual rollback
+
+The `deploy` role accepts `war_path` as a path readable on the Ansible control node (for Jenkins, pass the workspace artifact path), stores it in an immutable versioned release, switches `current`, restarts only when the WAR, link, or service configuration changed, and waits for `/actuator/health` up to 10 times with a 5-second delay. Health is accepted only for an HTTP 200 response containing JSON `{"status":"UP"}`; redirects are not followed. A failed deployment restores the prior release and verifies its health before returning a clear failed-play message. Use a new `app_version` for changed WAR content; overwriting the currently active release with different bytes is refused because it would make rollback unsafe. After a successful deploy or manual rollback, only the active release and the two most recently modified previous releases are retained.
+
+From the Ansible directory, deploy a Jenkins workspace artifact using its control-node-visible path:
+
+```bash
+ansible-playbook site.yml \
+  -e "war_path=${WORKSPACE}/target/crop-advisory.war" \
+  -e "app_version=${BUILD_NUMBER}"
+```
+
+For a Windows Jenkins workspace accessed by WSL Ansible, translate the workspace path to its mounted Linux path (for example `/mnt/c/ProgramData/Jenkins/.jenkins/workspace/crop-advisory-pipeline/target/crop-advisory.war`). `war_path` must refer to a file on the Ansible control node; Ansible copies it to the target. To rerun provisioning unchanged, use the same WAR and `app_version`; the recap should show `changed=0`.
+
+To manually activate an installed release, specify its directory name:
+
+```bash
+ansible-playbook rollback.yml -e rollback_to=123
+```
+
+The rollback play verifies the selected WAR before changing `current`, restarts the service, waits for health, prunes releases to the configured limit, and restores the previously active link if the selected release does not pass health.
+
+For a failure-path demonstration, create a disposable source copy or throwaway branch, remove `health` from `management.endpoints.web.exposure.include` in that copy, run `mvn -B clean package`, and deploy that WAR with a new `app_version`. The application will start but its health URL will fail the strict check (for example, by returning 404 or redirecting to login); the play should fail after restoring the working `current` release. Do not introduce the deliberate defect on a shared branch or overwrite the known-good WAR.
+
+To reset a WSL target, first create or retain a clean pre-provisioning backup/snapshot. `wsl.exe --unregister Ubuntu-22.04` permanently deletes that distro and its database/data; only run it when that exact target is disposable and you have the intended clean rootfs archive to re-import:
+
+```powershell
+wsl.exe --export Ubuntu-22.04 C:\WSL\Ubuntu-22.04-clean.tar
+wsl.exe --unregister Ubuntu-22.04
+wsl.exe --import Ubuntu-22.04 C:\WSL\Ubuntu-22.04 C:\WSL\Ubuntu-22.04-clean.tar --version 2
+```
+
+The export must be a pre-provisioning baseline to produce a clean target. Otherwise, prefer restoring a VM snapshot or install a fresh disposable WSL distro with `wsl.exe --install -d Ubuntu-22.04`. Never unregister a distro containing data you need.
+
 ## Branching
 See docs/BRANCH_POLICY.md. Work happens on feature branches, merged into develop through pull requests. The main branch holds tagged, release-ready code.
 

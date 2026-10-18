@@ -10,13 +10,14 @@ The Ansible playbook manages an Ubuntu 22.04 or 24.04 host with systemd. The hos
 | User | `ansible` (host-specific) | SSH management account configured outside this playbook; must have privilege escalation rights on the target. The disposable local WSL target uses an SSH public key and passwordless sudo for this account only. |
 | Folder | `/opt/crop-advisory` | Root-owned application root. |
 | Folder | `/opt/crop-advisory/releases` | `cropapp:cropapp`, mode `0755`; contains versioned releases. |
-| Folder | `/opt/crop-advisory/releases/<app_version>` | `cropapp:cropapp`, mode `0755`; contains `app.war`. |
-| Symlink | `/opt/crop-advisory/current` | Root-owned link to the selected `cropapp:cropapp` versioned release directory; the service runs `current/app.war`. |
+| Folder | `/opt/crop-advisory/releases/<app_version>` | `cropapp:cropapp`, mode `0755`; contains `app.war`. Successful deployment retains only the active release and the two most recent previous releases. |
+| Symlink | `/opt/crop-advisory/current` | Root-owned link to the selected `cropapp:cropapp` versioned release directory; deployment health failure restores the prior target. |
+| Health check | `GET /actuator/health` on TCP `8084` | A deployment is healthy only when the endpoint returns HTTP 200 with JSON status `UP`; redirects are not followed. Failed checks trigger automatic release rollback. |
 | Folder | `/var/lib/crop-advisory/data` | `cropapp:cropapp`, mode `0750`; persistent H2 database directory. |
 | Folder | `/etc/crop-advisory` | `root:cropapp`, mode `0750`; application configuration. |
 | File | `/etc/crop-advisory/crop-advisory.env` | `root:cropapp`, mode `0640`; defines `APP_PORT=8084`, `APP_ENV=production`, and `DB_PATH=/var/lib/crop-advisory/data/cropdb`. |
 | File | `/etc/systemd/system/crop-advisory.service` | Root-owned systemd unit launching `/usr/bin/java -jar /opt/crop-advisory/current/app.war` as `cropapp`. |
 | Port | TCP `8084` | Application HTTP port; allowed through UFW only if UFW is installed and active. SSH port 22 is used by Ansible to manage the target. |
-| Service | `crop-advisory.service` | Enabled at boot and started by Ansible; restarts on failure. |
+| Service | `crop-advisory.service` | Enabled at boot and started by Ansible; restarts on failure or when the selected release/configuration changes. |
 | Service | `ssh` | Must be enabled and reachable on the target for remote Ansible management (TCP 22). |
 | Service | `systemd` | Required on the target; for WSL2, enable `systemd=true` in `/etc/wsl.conf` and restart WSL. |

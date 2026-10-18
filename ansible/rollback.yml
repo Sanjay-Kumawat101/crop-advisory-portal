@@ -1,0 +1,110 @@
+---
+- name: Roll back Crop Advisory Portal to a selected release
+  hosts: crop_servers
+  become: true
+  gather_facts: false
+
+  vars:
+    app_releases_dir: "/opt/{{ app_name }}/releases"
+    app_release_dir: "{{ app_releases_dir }}/{{ rollback_to }}"
+    rollback_release_path: "{{ app_release_dir }}"
+
+  pre_tasks:
+    - name: Require a rollback version
+      ansible.builtin.assert:
+        that:
+          - rollback_to is defined
+          - rollback_to is match('^[A-Za-z0-9][A-Za-z0-9._+-]*$')
+          - app_release_limit | int >= 1
+        fail_msg: "Pass a valid version with -e rollback_to=<release-version>."
+
+    - name: Verify rollback release exists on the target
+      ansible.builtin.stat:
+        path: "{{ rollback_release_path }}/app.war"
+      register: rollback_war
+
+    - name: Require a regular WAR file for the selected release
+      ansible.builtin.assert:
+        that:
+          - rollback_war.stat.exists
+          - rollback_war.stat.isreg
+        fail_msg: "Release {{ rollback_to }} does not contain app.war; no changes were made."
+
+    - name: Record current release for rollback if the requested version fails
+      ansible.builtin.stat:
+        path: "/opt/{{ app_name }}/current"
+        follow: false
+      register: current_release_link
+
+    - name: Record current release path
+      ansible.builtin.set_fact:
+        current_release_path: "{{ current_release_link.stat.lnk_source | default('') }}"
+
+  tasks:
+    - name: Switch release and verify health, restoring the prior version on failure
+      block:
+        - name: Point current symlink to requested release
+          ansible.builtin.file:
+            src: "{{ rollback_release_path }}"
+            dest: "/opt/{{ app_name }}/current"
+            state: link
+            force: true
+          register: rollback_link
+
+        - name: Restart Crop Advisory service if release changed
+          ansible.builtin.systemd:
+            name: crop-advisory.service
+            enabled: true
+            state: "{{ 'restarted' if rollback_link.changed else 'started' }}"
+            daemon_reload: true
+
+        - name: Wait for requested release health
+          ansible.builtin.uri:
+            url: "http://127.0.0.1:{{ app_port }}/actuator/health"
+            method: GET
+            status_code: 200
+            return_content: true
+            follow_redirects: none
+          register: rollback_result
+          until:
+            - rollback_result.status | default(0) == 200
+            - rollback_result.json.status | default('') == 'UP'
+          retries: 10
+          delay: 5
+
+        - name: Prune releases after successful manual rollback
+          ansible.builtin.include_tasks: roles/deploy/tasks/prune.yml
+
+      rescue:
+        - name: Restore prior symlink after failed manual rollback
+          ansible.builtin.file:
+            src: "{{ current_release_path }}"
+            dest: "/opt/{{ app_name }}/current"
+            state: link
+            force: true
+          when: current_release_path | length > 0
+
+        - name: Restart service on prior release after failed manual rollback
+          ansible.builtin.systemd:
+            name: crop-advisory.service
+            state: restarted
+            daemon_reload: true
+          when: current_release_path | length > 0
+
+        - name: Remove current symlink after failed rollback when there was no prior release
+          ansible.builtin.file:
+            path: "/opt/{{ app_name }}/current"
+            state: absent
+          when: current_release_path | length == 0
+
+        - name: Stop service after failed rollback when there was no prior release
+          ansible.builtin.systemd:
+            name: crop-advisory.service
+            state: stopped
+          when: current_release_path | length == 0
+
+        - name: Fail with manual rollback outcome
+          ansible.builtin.fail:
+            msg: >-
+              Manual rollback to {{ rollback_to }} failed health verification.
+              {{ 'Restored ' ~ (current_release_path | basename) ~ ' as current.' if current_release_path | length > 0 else 'No previous current release was available.' }}
