@@ -52,7 +52,8 @@ pipeline {
         stage('Docker Build') {
             steps {
                 script {
-                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0, 7)}"
+                    def shortCommit = bat(returnStdout: true, script: '@git rev-parse --short=7 HEAD').trim()
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortCommit}"
                 }
                 bat 'docker build --tag localhost:5000/crop-advisory:%IMAGE_TAG% --tag localhost:5000/crop-advisory:latest .'
             }
