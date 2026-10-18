@@ -11,14 +11,31 @@ A web portal where farmers raise crop queries, agricultural experts give advice,
 ## Tech stack
 Java 17, Spring Boot 3.5 (WAR), Thymeleaf, Spring Security, Spring Data JPA, H2, Maven, Tomcat 10.1
 
+## Architecture
+
+```mermaid
+flowchart LR
+    C[Git commit] --> J[Jenkins on Windows]
+    J --> B[Build and unit tests]
+    B --> S[Selenium UI gate]
+    S --> DB[Build and push Docker image]
+    DB --> D[Replace Docker container<br/>host port 8082]
+    D --> A[Ansible provisioning<br/>Ubuntu via WSL2 control node]
+    A --> U[systemd application<br/>port 8084]
+    U --> H[Health check<br/>/actuator/health]
+```
+
+Jenkins currently builds, tests, pushes to the local registry, and deploys Docker. The Ansible deployment is a separately invoked post-pipeline step, not a Jenkins stage. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for component and deployment diagrams.
+
 ## Ports
 | Service | Port |
 |---|---|
-| Jenkins | 8080 |
-| Tomcat | 8081 |
-| Docker host port | 8082 |
-| Dev run (mvn spring-boot:run) | 8083 |
+| Jenkins (Windows service) | 8080 |
+| Tomcat 10.1 (external WAR deployment) | 8081 |
+| Docker host port (container listens on 8080) | 8082 |
+| Local development (`mvn spring-boot:run`) | 8083 |
 | Ansible-managed Ubuntu service | 8084 |
+| Jenkins UI-test application (temporary) | 8085 |
 
 ## Getting started
 1. Install JDK 17, Maven 3.9 and Git.
@@ -28,9 +45,21 @@ Java 17, Spring Boot 3.5 (WAR), Thymeleaf, Spring Security, Spring Data JPA, H2,
 5. Open http://localhost:8083/login
 6. Health check: http://localhost:8083/actuator/health
 
+## Running the project stages
+
+Run commands from the repository root unless noted. The full pipeline needs Windows Jenkins with Git, Maven 3.9, Java 17+, headless Chrome, Docker Desktop in Linux-container mode, and the Jenkins test credentials described below.
+
+1. **Build and unit tests:** `mvn -B clean package`. This creates `target/crop-advisory.war`; it does not launch Chrome.
+2. **Selenium UI tests:** ensure Chrome is installed and the test accounts are configured as the three Jenkins credentials. For local runs, set the six `UI_*` environment variables and `APP_PORT=8085` as shown in the Selenium section below; the Maven profile starts and stops its own test application. Jenkins uses the same profile on port 8085 with an isolated workspace database.
+3. **Tomcat deployment (optional):** copy `target/crop-advisory.war` to Tomcat 10.1 `webapps` and browse to `http://localhost:8081/crop-advisory/login`. Task 8's separate Jenkins script requires a Tomcat Manager credential.
+4. **Docker deployment:** after a successful package, run `docker build -t crop-advisory:1.0.0 .`, then `docker run -d --name crop-advisory -p 8082:8080 -v crop-advisory-data:/data crop-advisory:1.0.0`. The Jenkins pipeline performs a unique-tagged image build/push to the local registry and replaces the container only after tests pass.
+5. **Ansible deployment:** from the Ubuntu WSL2 control node, build a WAR readable there, then in `ansible/` run `ansible-playbook site.yml -e app_version=1.0.0 -e war_path=/path/to/crop-advisory.war`. Verify `curl -fsS http://localhost:8084/actuator/health`; the playbook validates JSON `status: UP` and rolls back an unhealthy release.
+
+Jenkins' pipeline pushes to a local registry at `localhost:5000`. Configure credentials and service-account access before using it; do not commit credentials. See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for Windows Jenkins, Tomcat, Docker Desktop, and WSL Ansible guidance. Known gaps and proposed follow-ups are in [docs/LIMITATIONS.md](docs/LIMITATIONS.md) and [docs/FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md).
+
 ## Selenium UI tests
 
-Install Google Chrome before running the browser tests. In one terminal, start the app with `mvn spring-boot:run`. In another PowerShell terminal, set environment variables to the local UI test account values (do not put credentials in source control), then run the Selenium/JUnit journeys:
+Install Google Chrome before running the browser tests. The Maven `ui-tests` profile starts and stops the application itself; it defaults to port 8083. In PowerShell, choose a temporary database path and set environment variables for the UI test accounts (do not put credentials in source control), then run the Selenium/JUnit journeys:
 
 ```powershell
 $env:UI_FARMER_USERNAME = "<farmer username>"
@@ -39,20 +68,22 @@ $env:UI_EXPERT_USERNAME = "<expert username>"
 $env:UI_EXPERT_PASSWORD = "<expert password>"
 $env:UI_ADMIN_USERNAME = "<admin username>"
 $env:UI_ADMIN_PASSWORD = "<admin password>"
-mvn verify -Pui-tests "-Dbase.url=http://localhost:8083"
+$env:APP_PORT = "8085"
+$env:DB_PATH = "$PWD\target\ui-test-data\local-cropdb"
+mvn -B verify -Pui-tests "-Dbase.url=http://localhost:8085"
 ```
 
-Selenium is included with test scope, and the `ui-tests` profile runs `*IT.java` tests through Maven Failsafe. The default `mvn clean package` build does not launch a browser. Chrome runs headlessly, and Selenium Manager resolves the matching WebDriver. If a UI test fails, its browser screenshot is saved under `target/screenshots`; Failsafe reports are written to `target/failsafe-reports`.
+Selenium is included with test scope, and the `ui-tests` profile runs `*IT.java` tests through Maven Failsafe. The default `mvn clean package` build does not launch a browser. Chrome runs headlessly, and Selenium Manager resolves the matching WebDriver. If a UI test fails, its browser screenshot is saved under `target/screenshots`; Failsafe reports are written to `target/failsafe-reports`. Jenkins runs the test application on port 8085 with its own workspace database.
 
 ## Docker Desktop (Windows, Linux containers)
 Build the WAR before building the image. From the repository root in PowerShell:
 
 ```powershell
 mvn clean package
-docker build -t crop-advisory:0.2.0 .
+docker build -t crop-advisory:1.0.0 .
 docker images crop-advisory
 docker volume create crop-advisory-data
-docker run -d --name crop-advisory -p 8082:8080 -v crop-advisory-data:/data crop-advisory:0.2.0
+docker run -d --name crop-advisory -p 8082:8080 -v crop-advisory-data:/data crop-advisory:1.0.0
 docker ps
 ```
 
@@ -80,7 +111,7 @@ docker ps
 docker stop crop-advisory
 docker rm crop-advisory
 docker ps -a
-docker rmi crop-advisory:0.2.0
+docker rmi crop-advisory:1.0.0
 ```
 
 `docker ps` lists running containers only; after `docker stop`, use `docker ps -a` to see the stopped container. Remove the named data volume only when its database should also be deleted: `docker volume rm crop-advisory-data`.
@@ -92,7 +123,7 @@ The Freestyle job `crop-advisory-ci` builds the `develop` branch from GitHub. Co
 
 Keep the existing Freestyle job `crop-advisory-ci` and its build history. Create a separate Jenkins **Pipeline** job (for example, `crop-advisory-pipeline`) using **Pipeline script from SCM**:
 
-1. Set **SCM** to Git, enter the repository URL, and set **Branches to build** to `*/feature/12-jenkins-docker-cd` to validate this branch, then `*/develop` after merge.
+1. Set **SCM** to Git, enter the repository URL, and set **Branches to build** to `*/release/1.0.0` to validate this release, then `*/develop` after merge.
 2. Set **Script Path** to `Jenkinsfile` and enable **Poll SCM** with `H/5 * * * *` if webhooks cannot reach the Jenkins instance.
 3. Save and run the job. It builds and tests, runs Selenium, builds and pushes commit-tagged Docker images, then deploys only after all earlier stages pass.
 
@@ -264,3 +295,10 @@ See docs/BRANCH_POLICY.md. Work happens on feature branches, merged into develop
 
 ## Project status
 Work is tracked through GitHub Issues and milestones.
+
+## Troubleshooting
+
+- **Windows Jenkins:** run Windows batch steps with `bat`; confirm the Jenkins service identity can access Git, Maven, Java, Chrome, the workspace, and Docker Desktop's named pipe. See the [Jenkins troubleshooting guide](docs/TROUBLESHOOTING.md#windows-jenkins).
+- **Tomcat:** use Tomcat 10.1 with the WAR at `webapps/crop-advisory.war`; check the context path, Manager loopback restriction, and Tomcat logs. See the [Tomcat troubleshooting guide](docs/TROUBLESHOOTING.md#tomcat-101).
+- **Docker Desktop:** use Linux containers, start Docker Desktop, confirm `docker info`, and ensure ports 8080/8082/5000 are not occupied by conflicting services. See [Docker troubleshooting](docs/TROUBLESHOOTING.md#docker-desktop).
+- **WSL Ansible:** run Ansible inside the Ubuntu control distro (not PowerShell), refresh dynamic WSL target addresses, and check SSH, systemd, and sudo. See [WSL Ansible troubleshooting](docs/TROUBLESHOOTING.md#wsl2-ansible).
