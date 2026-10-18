@@ -18,6 +18,7 @@ Java 17, Spring Boot 3.5 (WAR), Thymeleaf, Spring Security, Spring Data JPA, H2,
 | Tomcat | 8081 |
 | Docker host port | 8082 |
 | Dev run (mvn spring-boot:run) | 8083 |
+| Ansible-managed Ubuntu service | 8084 |
 
 ## Getting started
 1. Install JDK 17, Maven 3.9 and Git.
@@ -50,6 +51,61 @@ Copy `target/crop-advisory.war` into `<TOMCAT_HOME>/webapps/` and open http://lo
 | APP_PORT | 8083 | Port for `mvn spring-boot:run` |
 | APP_ENV | dev | Environment label shown on the home page |
 | DB_PATH | ./data/cropdb | H2 database file location |
+
+## Ansible deployment (WSL2 control node)
+
+Ansible's control node requires Linux; run it from Ubuntu on WSL2, not from Windows. Install Ubuntu 24.04 (or 22.04) from Windows PowerShell if it is not already available:
+
+```powershell
+wsl.exe --install -d Ubuntu-24.04
+```
+
+The managed host must be a second Ubuntu 22.04/24.04 WSL2 distro or a Linux VM with SSH and systemd. Enable systemd in `/etc/wsl.conf` on each WSL distro that needs it:
+
+```ini
+[boot]
+systemd=true
+```
+
+After editing the file, run `wsl.exe --shutdown` in Windows PowerShell and reopen the distros. Install Ansible and the build prerequisites in the control distro:
+
+```bash
+sudo apt update
+sudo apt install -y ansible openjdk-17-jdk maven
+```
+
+Check `mvn -version` before packaging: Ubuntu's repository may provide a Maven release older than the project's Maven 3.9 requirement. Use Maven 3.9 for the WAR build.
+
+On the target, install and enable SSH, and ensure the SSH account can use `sudo`:
+
+```bash
+sudo apt update
+sudo apt install -y openssh-server
+sudo systemctl enable --now ssh
+hostname -I
+```
+
+Configure SSH key authentication or use Ansible's password prompts. Do not commit private keys or passwords. Clone the project inside the control distro's Linux filesystem, build and test the WAR, and enter the Ansible directory:
+
+```bash
+mvn -B clean package
+cd ansible
+```
+
+Set the target host address and SSH user in `inventory/hosts.ini`. This branch's entry points to the local WSL test target; WSL addresses may change, so refresh it with `hostname -I` on the target after WSL restarts. A VM with a stable address is preferable. The inventory group is `crop_servers`.
+
+```bash
+ansible --version
+ansible-inventory --list
+ansible all -m ping
+ansible-playbook site.yml --syntax-check
+ansible-playbook site.yml --check --diff
+ansible-playbook site.yml
+```
+
+The local disposable WSL target uses key-only SSH and passwordless sudo for the `ansible` account. For a regular target, configure SSH and sudo securely, and add `--ask-become-pass` to check and deployment runs when sudo requires a password. Do not use passwordless sudo as a general production recommendation.
+
+The playbook installs Java 17 and curl, installs the WAR under `/opt/crop-advisory/releases/<version>/`, and starts `crop-advisory.service` on port 8084. It persists H2 data in `/var/lib/crop-advisory/data`. The UFW rule is added only when UFW is installed and active. Once deployed, verify on the target with `systemctl status crop-advisory` and `curl http://localhost:8084/actuator/health`. See [docs/CONFIG_SPEC.md](docs/CONFIG_SPEC.md) for the managed configuration inventory.
 
 ## Branching
 See docs/BRANCH_POLICY.md. Work happens on feature branches, merged into develop through pull requests. The main branch holds tagged, release-ready code.

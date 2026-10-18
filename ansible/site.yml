@@ -1,0 +1,180 @@
+---
+- name: Configure Crop Advisory Portal
+  hosts: crop_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    app_release_dir: "/opt/{{ app_name }}/releases/{{ app_version }}"
+    app_war_path: "{{ app_release_dir }}/app.war"
+
+  pre_tasks:
+    - name: Check that the built WAR is available on the control node
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../target/crop-advisory.war"
+      delegate_to: localhost
+      become: false
+      register: built_war
+      run_once: true
+
+    - name: Require the built WAR before changing the target
+      ansible.builtin.assert:
+        that:
+          - built_war.stat.exists
+          - built_war.stat.isreg
+        fail_msg: "Build target/crop-advisory.war on the Ansible control node before deployment."
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Validate deployment settings
+      ansible.builtin.assert:
+        that:
+          - app_version is match('^[A-Za-z0-9][A-Za-z0-9._+-]*$')
+          - app_port | int >= 1
+          - app_port | int <= 65535
+        fail_msg: "Set a safe app_version and a valid app_port in group_vars/all.yml."
+
+  tasks:
+    - name: Install Java 17 runtime and curl
+      ansible.builtin.apt:
+        name:
+          - openjdk-17-jre-headless
+          - curl
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create cropapp system group
+      ansible.builtin.group:
+        name: cropapp
+        system: true
+        state: present
+
+    - name: Create cropapp system user
+      ansible.builtin.user:
+        name: cropapp
+        group: cropapp
+        system: true
+        create_home: false
+        shell: /usr/sbin/nologin
+        state: present
+
+    - name: Create application root directory
+      ansible.builtin.file:
+        path: "/opt/{{ app_name }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create application releases directory
+      ansible.builtin.file:
+        path: "/opt/{{ app_name }}/releases"
+        state: directory
+        owner: cropapp
+        group: cropapp
+        mode: "0755"
+
+    - name: Create versioned release directory
+      ansible.builtin.file:
+        path: "{{ app_release_dir }}"
+        state: directory
+        owner: cropapp
+        group: cropapp
+        mode: "0755"
+
+    - name: Create application data directory
+      ansible.builtin.file:
+        path: "{{ app_data_dir }}"
+        state: directory
+        owner: cropapp
+        group: cropapp
+        mode: "0750"
+
+    - name: Create application configuration directory
+      ansible.builtin.file:
+        path: "{{ app_config_dir }}"
+        state: directory
+        owner: root
+        group: cropapp
+        mode: "0750"
+
+    - name: Copy application WAR into its versioned release
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../target/crop-advisory.war"
+        dest: "{{ app_war_path }}"
+        owner: cropapp
+        group: cropapp
+        mode: "0644"
+      notify: Restart crop-advisory
+
+    - name: Point current symlink to the deployed release
+      ansible.builtin.file:
+        src: "{{ app_release_dir }}"
+        dest: "/opt/{{ app_name }}/current"
+        state: link
+        force: true
+      notify: Restart crop-advisory
+
+    - name: Template application environment
+      ansible.builtin.template:
+        src: templates/crop-advisory.env.j2
+        dest: "{{ app_config_dir }}/crop-advisory.env"
+        owner: root
+        group: cropapp
+        mode: "0640"
+      notify: Restart crop-advisory
+
+    - name: Template systemd service unit
+      ansible.builtin.template:
+        src: templates/crop-advisory.service.j2
+        dest: /etc/systemd/system/crop-advisory.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart crop-advisory
+
+    - name: Enable and start Crop Advisory service
+      ansible.builtin.systemd:
+        name: crop-advisory.service
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: not ansible_check_mode
+
+    - name: Check whether UFW is installed
+      ansible.builtin.stat:
+        path: /usr/sbin/ufw
+      register: ufw_binary
+
+    - name: Read UFW status when installed
+      ansible.builtin.command:
+        argv:
+          - /usr/sbin/ufw
+          - status
+      register: ufw_status
+      changed_when: false
+      when: ufw_binary.stat.exists
+
+    - name: Allow application traffic through active UFW
+      ansible.builtin.command:
+        argv:
+          - /usr/sbin/ufw
+          - allow
+          - "{{ app_port }}/tcp"
+      register: ufw_allow
+      changed_when: >-
+        'Rule added' in (ufw_allow.stdout + ufw_allow.stderr) or
+        'Rules updated' in (ufw_allow.stdout + ufw_allow.stderr)
+      when:
+        - ufw_binary.stat.exists
+        - "'Status: active' in ufw_status.stdout"
+
+  handlers:
+    - name: Restart crop-advisory
+      ansible.builtin.systemd:
+        name: crop-advisory.service
+        state: restarted
+        daemon_reload: true
+      when: not ansible_check_mode
