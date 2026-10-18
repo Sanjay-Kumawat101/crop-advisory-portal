@@ -70,15 +70,7 @@ pipeline {
             steps {
                 bat 'docker rm -f crop-advisory || exit /b 0'
                 bat 'docker run -d --name crop-advisory -p 8082:8080 -v crop-data:/data --restart unless-stopped localhost:5000/crop-advisory:%IMAGE_TAG%'
-                bat '''@echo off
-for /L %%i in (1,1,30) do (
-    curl.exe --fail --silent --show-error --output NUL http://localhost:8082/actuator/health
-    if not errorlevel 1 exit /b 0
-    timeout /t 2 /nobreak >NUL
-)
-echo Docker deployment health check failed.
-exit /b 1
-'''
+                bat '''powershell -NoProfile -Command "$deadline=(Get-Date).AddSeconds(60); while ((Get-Date) -lt $deadline) { try { $health=Invoke-RestMethod -Uri 'http://127.0.0.1:8082/actuator/health' -TimeoutSec 3; if ($health.status -eq 'UP') { Write-Output 'Docker deployment health check passed.'; exit 0 } } catch { }; Start-Sleep -Seconds 2 }; Write-Error 'Docker deployment health check failed.'; exit 1"'''
             }
         }
     }
