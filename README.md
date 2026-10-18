@@ -50,9 +50,11 @@ The Freestyle job `crop-advisory-ci` builds the `develop` branch from GitHub. Co
 
 Keep the existing Freestyle job `crop-advisory-ci` and its build history. Create a separate Jenkins **Pipeline** job (for example, `crop-advisory-pipeline`) using **Pipeline script from SCM**:
 
-1. Set **SCM** to Git, enter the repository URL, and set **Branches to build** to `*/develop` after the feature is merged (or the intended deployment branch for testing).
+1. Set **SCM** to Git, enter the repository URL, and set **Branches to build** to `*/feature/10-jenkins-selenium` to validate this branch, then `*/develop` after merge.
 2. Set **Script Path** to `Jenkinsfile` and enable **Poll SCM** with `H/5 * * * *` if webhooks cannot reach the Jenkins instance.
-3. Save and run the job. Its `ENVIRONMENT` choice parameter selects `dev`, `test`, or `prod`; the pipeline builds and archives the WAR before deploying it.
+3. Save and run the job. Its `ENVIRONMENT` choice parameter selects `dev`, `test`, or `prod`; deployment runs only after the Build and Unit Tests and UI Tests stages pass.
+
+The UI Tests stage runs Chrome headlessly as the Jenkins service account. Install Chrome for that account and create three Jenkins **Username with password** credentials with IDs `ui-test-farmer`, `ui-test-expert`, and `ui-test-admin`, each for the corresponding local test account. These values are injected only during the test stage. The Maven `ui-tests` profile starts the application in `pre-integration-test` on port 8085 and stops it in `post-integration-test`; `DB_PATH` points to a temporary H2 file under the workspace. The post action publishes Surefire and Failsafe XML reports and archives any `target/screenshots` failure images.
 
 In **Manage Jenkins > Tools**, configure JDK 17 (or a compatible newer JDK) and Maven 3.9. Ensure Git and Maven are on the system `Path` and accessible to the Jenkins Windows service account.
 

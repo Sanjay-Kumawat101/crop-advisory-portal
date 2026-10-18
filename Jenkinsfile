@@ -20,15 +20,40 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build and Unit Tests') {
             steps {
-                bat 'mvn -B clean package -DskipTests'
+                bat 'mvn -B clean package'
+                archiveArtifacts artifacts: 'target/*.war'
             }
         }
 
-        stage('Package') {
+        stage('UI Tests') {
             steps {
-                archiveArtifacts artifacts: 'target/*.war'
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'ui-test-farmer',
+                        usernameVariable: 'UI_FARMER_USERNAME',
+                        passwordVariable: 'UI_FARMER_PASSWORD'
+                    ),
+                    usernamePassword(
+                        credentialsId: 'ui-test-expert',
+                        usernameVariable: 'UI_EXPERT_USERNAME',
+                        passwordVariable: 'UI_EXPERT_PASSWORD'
+                    ),
+                    usernamePassword(
+                        credentialsId: 'ui-test-admin',
+                        usernameVariable: 'UI_ADMIN_USERNAME',
+                        passwordVariable: 'UI_ADMIN_PASSWORD'
+                    )
+                ]) {
+                    withEnv([
+                        'APP_PORT=8085',
+                        'APP_ENV=jenkins',
+                        "DB_PATH=${env.WORKSPACE}\\target\\ui-test-data\\cropdb"
+                    ]) {
+                        bat 'mvn -B verify -Pui-tests -Dbase.url=http://localhost:8085'
+                    }
+                }
             }
         }
 
@@ -42,6 +67,13 @@ pipeline {
                     bat 'call scripts\\deploy-tomcat.bat "%ENVIRONMENT%"'
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            junit 'target/surefire-reports/*.xml, target/failsafe-reports/*.xml'
+            archiveArtifacts artifacts: 'target/screenshots/**', allowEmptyArchive: true
         }
     }
 }
