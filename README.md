@@ -46,16 +46,43 @@ Selenium is included with test scope, and the `ui-tests` profile runs `*IT.java`
 ## Jenkins CI (Windows)
 The Freestyle job `crop-advisory-ci` builds the `develop` branch from GitHub. Configure Jenkins to poll SCM with `H/5 * * * *`; polling is used because a Jenkins instance running locally is not reachable by GitHub webhooks.
 
-In **Manage Jenkins > Tools**, configure a JDK installation and Maven 3.9. The project compiles for Java 17; a newer JDK such as 21 can also run the build while preserving that target. Ensure Git and Maven are available to the Jenkins Windows service account and on the system `Path`.
+## Jenkins Pipeline and Tomcat deployment (Windows)
 
-Configure the job with:
-- **Source Code Management:** Git repository URL and branch `*/develop`.
-- **Build trigger:** Poll SCM schedule `H/5 * * * *`.
-- **Build step:** Execute Windows batch command `mvn clean package`.
-- **Archive artifacts:** `target/*.war`.
-- **Publish JUnit test results:** `target/surefire-reports/*.xml`.
+Keep the existing Freestyle job `crop-advisory-ci` and its build history. Create a separate Jenkins **Pipeline** job (for example, `crop-advisory-pipeline`) using **Pipeline script from SCM**:
 
-The packaged WAR is `target/crop-advisory.war`. Jenkins must have permission to access the JDK, Maven, Git, job workspace, and Maven local repository.
+1. Set **SCM** to Git, enter the repository URL, and set **Branches to build** to `*/develop` after the feature is merged (or the intended deployment branch for testing).
+2. Set **Script Path** to `Jenkinsfile` and enable **Poll SCM** with `H/5 * * * *` if webhooks cannot reach the Jenkins instance.
+3. Save and run the job. Its `ENVIRONMENT` choice parameter selects `dev`, `test`, or `prod`; the pipeline builds and archives the WAR before deploying it.
+
+In **Manage Jenkins > Tools**, configure JDK 17 (or a compatible newer JDK) and Maven 3.9. Ensure Git and Maven are on the system `Path` and accessible to the Jenkins Windows service account.
+
+### Jenkins credentials and Windows service permissions
+
+Create a Jenkins credential of kind **Username with password**, with ID `tomcat-manager`. Use the Tomcat Manager account described below. The pipeline binds the credential only for deployment; do not put the username or password in the Jenkinsfile, repository, or command-line job parameters.
+
+Set `CATALINA_BASE` in the Jenkins agent/service environment to the Tomcat base directory. The configured Tomcat 10.1.61 installation is `C:\apache-tomcat-10.1.61`; the deploy script uses this path and the Windows service name `Tomcat10` as defaults when they are not overridden. Configure its HTTP connector to use port 8081 (Jenkins uses 8080), then install the Windows service from an elevated command prompt with `C:\apache-tomcat-10.1.61\bin\service.bat install Tomcat10`. The Jenkins Windows service account needs access to the JDK, Maven, Git, workspace and Maven cache, permission to write those Tomcat/data paths, and permission to stop and start the Tomcat Windows service. Grant only the necessary rights; an administrator may need to install/configure the service and grant service-control permissions.
+
+**Windows service caveat:** `setenv.bat` is normally consumed by Tomcat's startup scripts, but a Tomcat Windows service installed through the service wrapper (Procrun) may not read it. Verify how the service starts Tomcat. If it does not consume `setenv.bat`, configure `APP_ENV` and `DB_PATH` as Java options/environment for that service using its supported service configuration, and ensure the Jenkins account can update the selected environment settings. The script's file creation alone does not guarantee that the running service will inherit them.
+
+### Tomcat Manager setup
+
+In Tomcat's `%CATALINA_BASE%\conf\tomcat-users.xml`, define a dedicated deployment user with only the `manager-script` role. Replace both placeholder values with a unique username and a strong, non-reused secret; the values below are examples, not working credentials:
+
+```xml
+<role rolename="manager-script"/>
+<user username="jenkins-deploy" password="REPLACE_WITH_A_STRONG_SECRET" roles="manager-script"/>
+```
+
+In the Manager application's `META-INF\context.xml` (commonly `%CATALINA_BASE%\webapps\manager\META-INF\context.xml`), retain a `RemoteAddrValve` that permits loopback addresses only so the text API remains local to the Jenkins/Tomcat host:
+
+```xml
+<Valve className="org.apache.catalina.valves.RemoteAddrValve"
+       allow="127\.\d+\.\d+\.\d+|::1|0:0:0:0:0:0:0:1" />
+```
+
+Do not expose the Manager text API to remote hosts. Restart Tomcat after changing its Manager configuration. The pipeline deploys `target\crop-advisory.war` through `http://localhost:8081/manager/text/` and performs a bounded health check against `http://localhost:8081/crop-advisory/actuator/health`.
+
+For delivery evidence, capture the Jenkins Pipeline job's SCM/script-path configuration and a successful build/Deploy console result, plus the local health-check success. Redact usernames, credentials, tokens, and other secrets from screenshots or logs; never include the actual `tomcat-users.xml` secret.
 
 ## Deploy on Tomcat 10.1 (port 8081)
 Copy `target/crop-advisory.war` into `<TOMCAT_HOME>/webapps/` and open http://localhost:8081/crop-advisory/login
