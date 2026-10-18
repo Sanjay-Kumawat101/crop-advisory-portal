@@ -27,6 +27,20 @@ Java 17, Spring Boot 3.5 (WAR), Thymeleaf, Spring Security, Spring Data JPA, H2,
 5. Open http://localhost:8083/login
 6. Health check: http://localhost:8083/actuator/health
 
+## Jenkins CI (Windows)
+The Freestyle job `crop-advisory-ci` builds the `develop` branch from GitHub. Configure Jenkins to poll SCM with `H/5 * * * *`; polling is used because a Jenkins instance running locally is not reachable by GitHub webhooks.
+
+In **Manage Jenkins > Tools**, configure a JDK installation and Maven 3.9. The project compiles for Java 17; a newer JDK such as 21 can also run the build while preserving that target. Ensure Git and Maven are available to the Jenkins Windows service account and on the system `Path`.
+
+Configure the job with:
+- **Source Code Management:** Git repository URL and branch `*/develop`.
+- **Build trigger:** Poll SCM schedule `H/5 * * * *`.
+- **Build step:** Execute Windows batch command `mvn clean package`.
+- **Archive artifacts:** `target/*.war`.
+- **Publish JUnit test results:** `target/surefire-reports/*.xml`.
+
+The packaged WAR is `target/crop-advisory.war`. Jenkins must have permission to access the JDK, Maven, Git, job workspace, and Maven local repository.
+
 ## Deploy on Tomcat 10.1 (port 8081)
 Copy `target/crop-advisory.war` into `<TOMCAT_HOME>/webapps/` and open http://localhost:8081/crop-advisory/login
 
