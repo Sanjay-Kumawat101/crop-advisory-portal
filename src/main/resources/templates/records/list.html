@@ -14,7 +14,7 @@
 
     <section class="card">
         <div class="row">
-            <h2>Advisory records</h2>
+            <h2 th:text="${role == 'FARMER' ? 'My queries' : 'Advisory records'}">Advisory records</h2>
             <a class="btn" id="new-record" th:if="${role == 'FARMER'}" th:href="@{/records/new}">+ New query</a>
         </div>
 
