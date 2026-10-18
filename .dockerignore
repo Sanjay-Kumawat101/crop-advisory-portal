@@ -1,0 +1,9 @@
+.git
+.github
+.vscode
+data
+*.mv.db
+*.trace.db
+*.log
+target/*
+!target/crop-advisory.war

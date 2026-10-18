@@ -43,6 +43,47 @@ mvn verify -Pui-tests "-Dbase.url=http://localhost:8083"
 
 Selenium is included with test scope, and the `ui-tests` profile runs `*IT.java` tests through Maven Failsafe. The default `mvn clean package` build does not launch a browser. Chrome runs headlessly, and Selenium Manager resolves the matching WebDriver. If a UI test fails, its browser screenshot is saved under `target/screenshots`; Failsafe reports are written to `target/failsafe-reports`.
 
+## Docker Desktop (Windows, Linux containers)
+Build the WAR before building the image. From the repository root in PowerShell:
+
+```powershell
+mvn clean package
+docker build -t crop-advisory:0.2.0 .
+docker images crop-advisory
+docker volume create crop-advisory-data
+docker run -d --name crop-advisory -p 8082:8080 -v crop-advisory-data:/data crop-advisory:0.2.0
+docker ps
+```
+
+The portal is available at http://localhost:8082/login. Port 8082 is used on the host because Jenkins already occupies host port 8080; Docker forwards host port 8082 to the application’s container port 8080. The application stores its H2 database in `/data`, persisted in the named `crop-advisory-data` volume.
+
+Useful container lifecycle commands:
+
+```powershell
+# Follow application output; press Ctrl+C to stop following (the container keeps running).
+docker logs -f crop-advisory
+
+# Open a shell in the running container; type exit to leave.
+docker exec -it crop-advisory bash
+
+# Show the configured image, ports, environment, mount and health status.
+docker inspect crop-advisory --format 'Image={{.Config.Image}} Ports={{json .NetworkSettings.Ports}} Env={{json .Config.Env}} Mounts={{json .Mounts}} Health={{json .State.Health}}'
+
+docker stop crop-advisory
+docker ps
+docker ps -a
+docker start crop-advisory
+docker ps
+docker restart crop-advisory
+docker ps
+docker stop crop-advisory
+docker rm crop-advisory
+docker ps -a
+docker rmi crop-advisory:0.2.0
+```
+
+`docker ps` lists running containers only; after `docker stop`, use `docker ps -a` to see the stopped container. Remove the named data volume only when its database should also be deleted: `docker volume rm crop-advisory-data`.
+
 ## Jenkins CI (Windows)
 The Freestyle job `crop-advisory-ci` builds the `develop` branch from GitHub. Configure Jenkins to poll SCM with `H/5 * * * *`; polling is used because a Jenkins instance running locally is not reachable by GitHub webhooks.
 
