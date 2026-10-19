@@ -1,0 +1,24 @@
+---
+- name: Find installed release directories for retention
+  ansible.builtin.find:
+    paths: "{{ app_releases_dir }}"
+    file_type: directory
+    recurse: false
+  register: installed_releases
+
+- name: Select old releases to remove while preserving the active release
+  ansible.builtin.set_fact:
+    releases_to_remove: >-
+      {{
+        (installed_releases.files
+        | rejectattr('path', 'equalto', app_release_dir)
+        | sort(attribute='mtime', reverse=true)
+        | map(attribute='path')
+        | list)[(app_release_limit | int) - 1:]
+      }}
+
+- name: Remove releases beyond the retention limit
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ releases_to_remove }}"

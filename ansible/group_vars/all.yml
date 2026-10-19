@@ -1,0 +1,11 @@
+---
+app_name: crop-advisory
+app_version: "0.1.0-SNAPSHOT"
+app_port: 8084
+app_env: production
+app_releases_dir: /opt/crop-advisory/releases
+app_release_limit: 3
+war_path: "{{ playbook_dir }}/../target/crop-advisory.war"
+app_data_dir: /var/lib/crop-advisory/data
+app_db_path: /var/lib/crop-advisory/data/cropdb
+app_config_dir: /etc/crop-advisory
