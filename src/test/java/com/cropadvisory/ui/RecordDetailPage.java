@@ -21,6 +21,10 @@ final class RecordDetailPage extends PageObject {
         return visible(By.id("record-crop")).getText();
     }
 
+    String description() {
+        return driver.findElement(By.xpath("//dt[normalize-space()='Description']/following-sibling::dd[1]")).getText();
+    }
+
     void moveToUnderReview() {
         visible(By.id("btn-under_review")).submit();
         wait.until(ExpectedConditions.textToBe(By.id("record-status"), "Under Review"));

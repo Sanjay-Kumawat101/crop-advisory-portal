@@ -52,11 +52,16 @@ class CropAdvisoryUiIT {
         loginAs(FARMER_USERNAME, FARMER_PASSWORD);
         String title = uniqueTitle();
 
-        RecordDetailPage detail = createRecord(title);
+        RecordsPage records = new RecordsPage(driver, baseUrl);
+        records.open();
+        records.openNewRecordForm();
+        RecordDetailPage detail = new RecordFormPage(driver, baseUrl).create(
+                "Maize", "UI Test Village", title, null);
 
         assertEquals(title, detail.title());
         assertEquals("Maize", detail.crop());
         assertEquals("Submitted", detail.status());
+        assertEquals("", detail.description(), "An omitted optional description should remain blank.");
     }
 
     @Test
