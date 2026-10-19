@@ -27,15 +27,6 @@
         <a class="btn" id="records-link" th:href="@{/records}"
            th:text="${role == 'FARMER' ? 'My queries' : (role == 'EXPERT' ? 'Queries to review' : 'All advisory records')}">Records</a>
     </section>
-
-    <section class="card">
-        <h2>Project status</h2>
-        <table>
-            <tr><td>Create, view, update and search records</td><td>Ready</td></tr>
-            <tr><td>Role-based status workflow</td><td>Ready</td></tr>
-            <tr><td>Summary dashboard</td><td>Ready</td></tr>
-        </table>
-    </section>
 </main>
 </body>
 </html>
