@@ -8,10 +8,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -51,6 +54,22 @@ class RecordControllerTest {
         mockMvc.perform(get("/records"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("records/list"));
+    }
+
+    @Test
+    @WithMockUser(username = "farmer1", roles = "FARMER")
+    void farmerSeesNewQueryButton() throws Exception {
+        mockMvc.perform(get("/records"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"new-record\"")));
+    }
+
+    @Test
+    @WithMockUser(username = "expert1", roles = "EXPERT")
+    void expertDoesNotSeeNewQueryButton() throws Exception {
+        mockMvc.perform(get("/records"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("id=\"new-record\""))));
     }
 
     @Test
